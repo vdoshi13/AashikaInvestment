@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Wheel Tracker</title>
+  <meta name="theme-color" content="#1A3A6B">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Wheel">
+  <link rel="apple-touch-icon" href="./icons/icon-180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <style>
+    :root {
+      --navy: #1A3A6B;
+      --teal: #2D8A6E;
+      --green: #4CAF7D;
+      --red: #c0392b;
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --line: #d9dee5;
+      --text: #1f2430;
+      --muted: #6b7280;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 16px;
+    }
+    header {
+      background: var(--navy); color: #fff;
+      padding: 14px 16px;
+      position: sticky; top: 0; z-index: 10;
+      box-shadow: 0 1px 4px rgba(0,0,0,.15);
+    }
+    header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: .3px; }
+    header p { margin: 2px 0 0; font-size: 12px; opacity: .8; }
+
+    .wrap { max-width: 560px; margin: 0 auto; padding: 14px 14px 40px; }
+
+    /* Segmented toggle */
+    .seg {
+      display: flex; background: #e7ebf1; border-radius: 12px; padding: 4px; margin-bottom: 16px;
+    }
+    .seg button {
+      flex: 1; border: 0; background: transparent; color: var(--muted);
+      font-size: 15px; font-weight: 600; padding: 11px 8px; border-radius: 9px;
+      cursor: pointer;
+    }
+    .seg button.active { background: #fff; color: var(--navy); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      padding: 16px; margin-bottom: 16px;
+    }
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+    label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .hint { font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 5px; }
+
+    input, select, textarea {
+      width: 100%; font-size: 16px; /* 16px avoids iOS zoom-on-focus */
+      padding: 12px 12px; border: 1px solid var(--line); border-radius: 10px;
+      background: #fff; color: var(--text); outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(45,138,110,.15); }
+    input[readonly] { background: #f1f3f6; color: var(--muted); }
+    textarea { min-height: 64px; resize: vertical; }
+
+    .row { display: flex; gap: 12px; }
+    .row .field { flex: 1; }
+
+    .btn {
+      width: 100%; border: 0; border-radius: 12px; color: #fff;
+      font-size: 17px; font-weight: 700; padding: 15px; cursor: pointer; margin-top: 4px;
+    }
+    .btn:disabled { opacity: .6; }
+    .btn-csp { background: var(--red); }
+    .btn-cc  { background: var(--green); }
+    .btn-div { background: var(--teal); }
+
+    .refresh {
+      background: none; border: 0; color: var(--teal); font-size: 13px; font-weight: 600;
+      padding: 0; cursor: pointer; float: right;
+    }
+
+    .mainnav { display: flex; gap: 8px; margin-bottom: 14px; }
+    .mainnav button {
+      flex: 1; border: 1px solid var(--line); background: #fff; color: var(--muted);
+      font-size: 15px; font-weight: 700; padding: 12px; border-radius: 11px; cursor: pointer;
+    }
+    .mainnav button.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+    .dashhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; min-height: 20px; }
+    .sectitle { font-size: 13px; font-weight: 700; color: var(--navy); text-transform: uppercase; letter-spacing: .4px; margin: 0 0 8px; }
+    .kpi { display: flex; align-items: baseline; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #eef1f5; }
+    .kpi:last-child { border-bottom: 0; }
+    .kpi .k { font-size: 14px; color: var(--muted); }
+    .brk .kpi .k { font-weight: 600; color: var(--text); }
+    .kpi .v { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+    .pos { color: var(--teal); } .neg { color: var(--red); }
+    .empty { color: var(--muted); font-size: 14px; padding: 6px 0; }
+
+    .pos-h { font-size: 16px; font-weight: 700; color: var(--navy); }
+    .pos-line { font-size: 16px; font-weight: 600; color: var(--navy); }
+    .chk { font-size: 13px; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .chk input { width: auto; }
+    .btn-update {
+      width: 100%; border: 0; border-radius: 11px; background: var(--navy); color: #fff;
+      font-size: 15px; font-weight: 700; padding: 13px; cursor: pointer; margin-top: 8px;
+    }
+    .btn-update:disabled { opacity: .6; }
+
+    .tappable { cursor: pointer; }
+    .tappable:active { background: #f0f3f7; }
+    .chev { color: #c2cad4; font-weight: 700; margin-left: 4px; }
+
+    .drill { position: fixed; inset: 0; background: rgba(15,20,30,.45); z-index: 60; display: flex; align-items: flex-end; }
+    .drill.hidden { display: none; }
+    .drill-card { background: #fff; width: 100%; max-height: 82vh; border-radius: 16px 16px 0 0; display: flex; flex-direction: column; box-shadow: 0 -6px 24px rgba(0,0,0,.25); }
+    .drill-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .drill-head span { font-size: 15px; font-weight: 700; color: var(--navy); }
+    .drill-x { border: 0; background: none; font-size: 26px; line-height: 1; color: var(--muted); cursor: pointer; padding: 0 4px; }
+    .drill-total { padding: 10px 16px; font-size: 13px; color: var(--muted); border-bottom: 1px solid #eef1f5; }
+    .drill-total b { font-size: 16px; font-variant-numeric: tabular-nums; }
+    .drill-body { overflow-y: auto; padding: 4px 16px 22px; -webkit-overflow-scrolling: touch; }
+    .tx { display: flex; justify-content: space-between; align-items: baseline; padding: 11px 0; border-bottom: 1px solid #f0f3f7; gap: 10px; }
+    .tx:last-child { border-bottom: 0; }
+    .tx .l { display: flex; flex-direction: column; }
+    .tx .l .t { font-weight: 700; color: var(--text); font-size: 15px; }
+    .tx .l .s { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .tx .a { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .tx.win .t, .tx.win .s, .tx.win .a { color: var(--teal); }
+    .tx.lose .t, .tx.lose .s, .tx.lose .a { color: var(--red); }
+    .tx.win { background: #eaf7ef; } .tx.lose { background: #fdecec; }
+
+    .netpnl { display: flex; align-items: center; justify-content: space-between; }
+    .np-label { font-size: 13px; font-weight: 700; color: var(--navy); text-transform: uppercase; letter-spacing: .5px; }
+    .np-val { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+    .fltbar { display: flex; gap: 8px; margin-bottom: 8px; }
+    .fltbar select { flex: 1; font-size: 14px; padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--text); }
+    .fltbar select:disabled { background: #f1f3f6; color: var(--muted); }
+    .fltnote { font-size: 11px; color: var(--muted); margin: 0 2px 10px; }
+    .chips { display: flex; gap: 8px; margin-bottom: 8px; }
+    .chips button { border: 1px solid var(--line); background: #fff; color: var(--muted); font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+    .chips button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+    .np-sub { display: block; font-size: 10px; font-weight: 400; color: var(--muted); text-transform: none; letter-spacing: 0; margin-top: 2px; }
+    .pctgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .pcell { background: #f6f8fa; border-radius: 9px; padding: 8px 10px; display: flex; flex-direction: column; }
+    .pcell .pk { font-size: 11px; color: var(--muted); }
+    .pcell .pv { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 1px; }
+    .kpib { padding: 9px 0; border-bottom: 1px solid #eef1f5; }
+    .kpib:last-child { border-bottom: 0; }
+    .kpirow { display: flex; align-items: baseline; justify-content: space-between; }
+    .kpirow .k { font-size: 14px; color: var(--muted); }
+    .brk .kpirow .k { font-weight: 600; color: var(--text); }
+    .kpirow .v { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+    .barbg { height: 4px; background: #eef1f5; border-radius: 2px; margin-top: 6px; }
+    .barfill { height: 4px; border-radius: 2px; background: var(--teal); }
+    .barfill.neg { background: var(--red); }
+
+    .hidden { display: none; }
+
+    /* Toast */
+    #toast {
+      position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px);
+      background: #1f2430; color: #fff; padding: 13px 18px; border-radius: 12px;
+      font-size: 14px; max-width: 90%; text-align: center; opacity: 0;
+      transition: opacity .25s, transform .25s; z-index: 50; box-shadow: 0 6px 20px rgba(0,0,0,.25);
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.ok  { background: var(--teal); }
+    #toast.err { background: var(--red); }
+
+    /* Installed-app layout: clear the notch, home indicator and rounded corners */
+    header {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding-top: calc(14px + env(safe-area-inset-top));
+      padding-left: calc(16px + env(safe-area-inset-left));
+      padding-right: calc(16px + env(safe-area-inset-right));
+    }
+    .wrap { padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
+    #toast { bottom: calc(22px + env(safe-area-inset-bottom)); }
+    .drill-body { padding-bottom: calc(22px + env(safe-area-inset-bottom)); }
+    .hbtn {
+      border: 1px solid rgba(255,255,255,.35); background: transparent; color: #fff;
+      font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 9px; cursor: pointer;
+    }
+    :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+    .setup {
+      position: fixed; inset: 0; z-index: 70; background: var(--bg); overflow-y: auto;
+      padding: calc(28px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
+    }
+    .setup .card { max-width: 520px; margin: 0 auto; }
+    .setup h2 { margin: 0 0 6px; font-size: 20px; color: var(--navy); }
+    .setup .lead { margin: 0 0 16px; font-size: 14px; line-height: 1.5; color: var(--muted); }
+    .btn-setup { background: var(--navy); }
+    .btn-link {
+      display: block; width: 100%; margin-top: 10px; border: 0; background: none;
+      color: var(--muted); font-size: 15px; font-weight: 600; padding: 10px; cursor: pointer;
+    }
+    .setup-status { font-size: 14px; margin-top: 12px; min-height: 20px; text-align: center; }
+    .setup-status.err { color: var(--red); }
+    .setup-status.ok { color: var(--teal); }
+    .setup.hidden, .btn-link.hidden { display: none; }
+
+    /* ---------- redesigned dashboard ---------- */
+    .card .sectitle { margin-bottom: 8px; }
+    .cardhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .cardhead .sectitle { margin: 0; }
+    .muted { color: var(--muted); }
+    .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px; display: flex; flex-direction: column; min-width: 0; }
+    .tile .tl { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .tile .tv { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 2px; overflow-wrap: anywhere; }
+    .tile .ts { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .tile .ts.pos { color: var(--teal); } .tile .ts.neg { color: var(--red); }
+    .exp { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid #eef1f5; }
+    .exp:last-child { border-bottom: 0; }
+    .exp .et { display: block; font-weight: 700; font-size: 15px; }
+    .exp .es { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .bdg { font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+    .b-bad { background: #fdecec; color: var(--red); }
+    .b-warn { background: #fdf3e1; color: #9a6206; }
+    .b-good { background: #eaf7ef; color: var(--teal); }
+    .b-neutral { background: #eef1f5; color: var(--muted); }
+    .hold { border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: #f6f8fa; }
+    .hold.win { background: #eaf7ef; } .hold.lose { background: #fdecec; }
+    .hold.win .ht, .hold.win .hv, .hold.win .hl { color: var(--teal); }
+    .hold.lose .ht, .hold.lose .hv, .hold.lose .hl { color: var(--red); }
+    .hrow { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .ht { font-weight: 700; font-size: 15px; }
+    .hs { font-weight: 400; font-size: 12px; }
+    .hv { font-weight: 800; font-variant-numeric: tabular-nums; }
+    .hl { display: block; font-size: 12px; margin-top: 2px; color: var(--muted); }
+    .htotal { display: flex; justify-content: space-between; font-weight: 700; font-size: 14px; padding: 8px 2px 0; border-top: 2px solid var(--navy); margin-top: 4px; }
+    .ibt { padding: 8px 0; border-bottom: 1px solid #eef1f5; }
+    .ibt:last-child { border-bottom: 0; }
+    .iv { font-size: 14px; font-variant-numeric: tabular-nums; }
+    .sbar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; margin-top: 6px; }
+    .s-opt { background: var(--teal); } .s-div { background: #8aa4cf; } .s-neg { background: var(--red); }
+    .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin: 0 4px 0 8px; }
+    .sw-opt { background: var(--teal); } .sw-div { background: #8aa4cf; }
+    .seg2 { display: flex; background: #eef1f5; border-radius: 9px; padding: 2px; }
+    .seg2 button { border: 0; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; padding: 5px 9px; border-radius: 7px; cursor: pointer; }
+    .seg2 button.on { background: #fff; color: var(--navy); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+    .tsub { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+    .tchart { position: relative; height: 110px; }
+    .avgline { position: absolute; left: 0; right: 0; border-top: 1px dashed #9aa5b4; pointer-events: none; }
+    .tbars { display: flex; align-items: flex-end; gap: 5px; height: 100%; }
+    .tbar { flex: 1; background: #cfd8e3; border-radius: 3px 3px 0 0; cursor: pointer; min-width: 0; }
+    .tbar.on { background: var(--teal); }
+    .tlabels { display: flex; gap: 5px; margin-top: 4px; }
+    .tlabels span { flex: 1; text-align: center; font-size: 10px; color: var(--muted); overflow: hidden; white-space: nowrap; min-width: 0; }
+    .linkrow { display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--navy); }
+    .capedit { margin-top: 16px; }
+    .capedit label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .caprow { display: flex; gap: 8px; align-items: stretch; }
+    .caprow input { flex: 1; }
+    .caprow .btn-update { width: auto; margin: 0; padding: 0 18px; }
+    .cbars { display: flex; align-items: flex-end; gap: 6px; height: 60px; }
+    .cbar { flex: 1; background: #cfd8e3; border-radius: 3px 3px 0 0; }
+    .cbar.on { background: var(--teal); }
+    .crange { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Wheel Tracker</h1>
+      <p>Adds straight into your tracker sheet</p>
+    </div>
+    <button class="hbtn" onclick="Api.showSetup()" aria-label="Connection settings">Settings</button>
+  </header>
+
+  <div class="wrap">
+    <div class="mainnav">
+      <button id="navTrade" class="active" onclick="showView('trade')">&#9998; Trade</button>
+      <button id="navManage" onclick="showView('manage')">&#9881; Manage</button>
+      <button id="navDash" onclick="showView('dashboard')">&#128202; Dashboard</button>
+    </div>
+
+    <div id="viewTrade">
+    <div class="seg">
+      <button id="tabCsp" class="active" onclick="showForm('csp')">CSP</button>
+      <button id="tabCc" onclick="showForm('cc')">Call</button>
+      <button id="tabDiv" onclick="showForm('div')">Dividend</button>
+    </div>
+
+    <!-- ===================== CSP FORM ===================== -->
+    <div id="formCsp" class="card">
+      <div class="field">
+        <label>Ticker</label>
+        <input id="cspTicker" type="text" autocapitalize="characters" autocomplete="off" placeholder="e.g. SCHD">
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Open Date</label>
+          <input id="cspOpenDate" type="date">
+        </div>
+        <div class="field">
+          <label>Expiry</label>
+          <input id="cspExpiry" type="date">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Strike</label>
+          <input id="cspStrike" type="number" inputmode="decimal" step="0.01" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label>Premium / share</label>
+          <input id="cspPremium" type="number" inputmode="decimal" step="0.01" placeholder="0.00">
+        </div>
+      </div>
+      <div class="field">
+        <label>Quantity (shares)</label>
+        <input id="cspQty" type="number" inputmode="numeric" step="100" placeholder="e.g. 100">
+        <div class="hint">Shares = contracts &times; 100</div>
+      </div>
+      <div class="field">
+        <label>Notes (optional)</label>
+        <textarea id="cspNotes" placeholder=""></textarea>
+      </div>
+      <button id="btnCsp" class="btn btn-csp" onclick="submitCSP()">Add CSP</button>
+    </div>
+
+    <!-- ===================== CC FORM ===================== -->
+    <div id="formCc" class="card hidden">
+      <div class="field">
+        <label>Origin CSP (assigned, open leg)
+          <button class="refresh" onclick="Api.fresh(loadCSPs)">&#8635; Refresh</button>
+        </label>
+        <select id="ccOriginCsp" onchange="syncCcTicker()">
+          <option value="">Loading&hellip;</option>
+        </select>
+        <div class="hint">Only assigned puts with no open/assigned call appear here.</div>
+      </div>
+      <div class="field">
+        <label>Ticker</label>
+        <input id="ccTicker" type="text" readonly>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Open Date</label>
+          <input id="ccOpenDate" type="date">
+        </div>
+        <div class="field">
+          <label>Expiry</label>
+          <input id="ccExpiry" type="date">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Strike</label>
+          <input id="ccStrike" type="number" inputmode="decimal" step="0.01" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label>Premium / share</label>
+          <input id="ccPremium" type="number" inputmode="decimal" step="0.01" placeholder="0.00">
+        </div>
+      </div>
+      <div class="field">
+        <label>Quantity (shares)</label>
+        <input id="ccQty" type="number" inputmode="numeric" step="100" placeholder="e.g. 100">
+        <div class="hint">Shares = contracts &times; 100</div>
+      </div>
+      <div class="field">
+        <label>Notes (optional)</label>
+        <textarea id="ccNotes" placeholder=""></textarea>
+      </div>
+      <button id="btnCc" class="btn btn-cc" onclick="submitCC()">Add Covered Call</button>
+    </div>
+
+    <!-- ===================== DIVIDEND FORM ===================== -->
+    <div id="formDiv" class="card hidden">
+      <div class="field">
+        <label>Ticker</label>
+        <input id="divTicker" type="text" autocapitalize="characters" autocomplete="off" placeholder="e.g. SCHD">
+      </div>
+      <div class="field">
+        <label>Date Received</label>
+        <input id="divDate" type="date">
+      </div>
+      <div class="field">
+        <label>Amount Received ($)</label>
+        <input id="divAmount" type="number" inputmode="decimal" step="0.01" placeholder="0.00">
+        <div class="hint">Total dollars received &mdash; this is what the dashboard sums.</div>
+      </div>
+      <div class="field">
+        <label>Dividend / share (optional)</label>
+        <input id="divPerShare" type="number" inputmode="decimal" step="0.0001" placeholder="0.0000">
+      </div>
+      <button id="btnDiv" class="btn btn-div" onclick="submitDiv()">Add Dividend</button>
+    </div>
+    </div><!-- /viewTrade -->
+
+    <div id="viewDashboard" class="hidden">
+      <div class="chips">
+        <button id="chipAll" class="on" onclick="applyQuickFilter('all')">All</button>
+        <button id="chipYtd" onclick="applyQuickFilter('ytd')">YTD</button>
+        <button id="chipMonth" onclick="applyQuickFilter('month')">This month</button>
+      </div>
+      <div class="fltbar">
+        <select id="fltYear" onchange="onYearChange()"><option value="">All years</option></select>
+        <select id="fltMonth" onchange="onMonthChange()" disabled>
+          <option value="">All months</option>
+          <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option>
+          <option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option>
+          <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
+          <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
+        </select>
+      </div>
+      <div id="fltNote" class="fltnote hidden">Income, trend and stats follow the filter &middot; holdings and expiries are live</div>
+      <div class="dashhead">
+        <span id="dashAsOf" class="hint"></span>
+        <button class="refresh" onclick="Api.fresh(loadDashboard)">&#8635; Refresh</button>
+      </div>
+      <div id="dashBody"><div class="card empty">Loading&hellip;</div></div>
+    </div>
+
+    <div id="viewManage" class="hidden">
+      <div class="seg">
+        <button id="mTabPut" class="active" onclick="showManage('CSP')">Puts</button>
+        <button id="mTabCall" onclick="showManage('CC')">Calls</button>
+      </div>
+      <div class="dashhead">
+        <label class="chk"><input type="checkbox" id="mShowAll" onchange="loadPositions()"> Show finalized</label>
+        <button class="refresh" onclick="Api.fresh(loadPositions)">&#8635; Refresh</button>
+      </div>
+      <div id="manageBody"><div class="card empty">Loading&hellip;</div></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <div id="setup" class="setup hidden" role="dialog" aria-labelledby="setupTitle">
+    <div class="card">
+      <h2 id="setupTitle">Connect to your tracker</h2>
+      <p class="lead">Paste the web app URL from your API deployment and the key from Wheel Tracker &rsaquo; Generate Mobile App Key. Both stay on this phone.</p>
+      <div class="field">
+        <label for="setupUrl">Web app URL</label>
+        <input id="setupUrl" type="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://script.google.com/macros/s/&hellip;/exec">
+      </div>
+      <div class="field">
+        <label for="setupKey">App key</label>
+        <input id="setupKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <button id="btnSetup" class="btn btn-setup" onclick="Api.saveSetup()">Connect</button>
+      <button id="btnSetupCancel" class="btn-link hidden" onclick="Api.hideSetup()">Cancel</button>
+      <div id="setupStatus" class="setup-status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <script src="./api.js"></script>
+
+  <div id="drill" class="drill hidden" onclick="if(event.target===this)closeDrill()">
+    <div class="drill-card">
+      <div class="drill-head">
+        <span id="drillTitle">Details</span>
+        <button class="drill-x" onclick="closeDrill()">&times;</button>
+      </div>
+      <div id="drillTotal" class="drill-total"></div>
+      <div id="drillBody" class="drill-body"></div>
+    </div>
+  </div>
+
+  <script>
+    /* ---------- helpers ---------- */
+    function $(id) { return document.getElementById(id); }
+
+    function todayStr() {
+      var d = new Date();
+      var m = ('0' + (d.getMonth() + 1)).slice(-2);
+      var day = ('0' + d.getDate()).slice(-2);
+      return d.getFullYear() + '-' + m + '-' + day;
+    }
+
+    function toast(msg, kind) {
+      var t = $('toast');
+      t.textContent = msg;
+      t.className = 'show ' + (kind || '');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(function () { t.className = t.className.replace('show', '').trim(); }, 3200);
+    }
+
+    function showForm(which) {
+      ['csp', 'cc', 'div'].forEach(function (f) {
+        $('form' + cap(f)).classList.toggle('hidden', f !== which);
+      });
+      $('tabCsp').classList.toggle('active', which === 'csp');
+      $('tabCc').classList.toggle('active', which === 'cc');
+      $('tabDiv').classList.toggle('active', which === 'div');
+    }
+
+    function setDefaults() {
+      $('cspOpenDate').value = todayStr();
+      $('ccOpenDate').value = todayStr();
+      $('divDate').value = todayStr();
+    }
+
+    /* ---------- CSP ---------- */
+    function submitCSP() {
+      var ticker = $('cspTicker').value.trim().toUpperCase();
+      var strike = parseFloat($('cspStrike').value);
+      var premium = parseFloat($('cspPremium').value);
+      var qty = parseInt($('cspQty').value, 10);
+
+      if (!ticker) { toast('Enter a ticker', 'err'); return; }
+      if (!$('cspOpenDate').value) { toast('Enter an open date', 'err'); return; }
+      if (!$('cspExpiry').value) { toast('Enter an expiry', 'err'); return; }
+      if (isNaN(strike) || isNaN(premium) || isNaN(qty)) { toast('Strike, premium and quantity must be numbers', 'err'); return; }
+
+      var trade = {
+        ticker: ticker,
+        openDate: $('cspOpenDate').value,
+        expiry: $('cspExpiry').value,
+        strike: strike,
+        premium: premium,
+        qty: qty,
+        notes: $('cspNotes').value
+      };
+
+      var btn = $('btnCsp');
+      btn.disabled = true; btn.textContent = 'Adding\u2026';
+      google.script.run
+        .withSuccessHandler(function (newId) {
+          btn.disabled = false; btn.textContent = 'Add CSP';
+          toast('CSP added: ' + newId, 'ok');
+          clearCsp();
+          loadCSPs(); // a new assigned leg may become available later
+        })
+        .withFailureHandler(function (err) {
+          btn.disabled = false; btn.textContent = 'Add CSP';
+          toast('Failed: ' + err.message, 'err');
+        })
+        .addCSP(trade);
+    }
+
+    function clearCsp() {
+      $('cspTicker').value = '';
+      $('cspStrike').value = '';
+      $('cspPremium').value = '';
+      $('cspQty').value = '';
+      $('cspNotes').value = '';
+      $('cspOpenDate').value = todayStr();
+    }
+
+    /* ---------- CC ---------- */
+    function loadCSPs() {
+      var sel = $('ccOriginCsp');
+      sel.innerHTML = '<option value="">Loading\u2026</option>';
+      google.script.run
+        .withSuccessHandler(function (items) {
+          sel.innerHTML = '';
+          if (!items || !items.length) {
+            var o = document.createElement('option');
+            o.value = ''; o.textContent = 'No assigned open legs';
+            o.disabled = true; o.selected = true;
+            sel.appendChild(o);
+            syncCcTicker();
+            return;
+          }
+          var ph = document.createElement('option');
+          ph.value = ''; ph.textContent = 'Select a leg\u2026';
+          sel.appendChild(ph);
+          items.forEach(function (item) {
+            var o = document.createElement('option');
+            o.value = item.id;
+            o.textContent = item.label;
+            o.dataset.ticker = item.ticker;
+            sel.appendChild(o);
+          });
+          syncCcTicker();
+        })
+        .withFailureHandler(function (err) {
+          sel.innerHTML = '<option value="">Error loading legs</option>';
+          toast('Failed to load legs: ' + err.message, 'err');
+        })
+        .getCSPList();
+    }
+
+    function syncCcTicker() {
+      var sel = $('ccOriginCsp');
+      var opt = sel.selectedOptions && sel.selectedOptions[0];
+      $('ccTicker').value = (opt && opt.dataset && opt.dataset.ticker) ? opt.dataset.ticker : '';
+    }
+
+    function submitCC() {
+      var sel = $('ccOriginCsp');
+      var opt = sel.selectedOptions && sel.selectedOptions[0];
+      if (!sel.value || !opt || opt.disabled) {
+        toast('Pick an origin leg first', 'err'); return;
+      }
+      var strike = parseFloat($('ccStrike').value);
+      var premium = parseFloat($('ccPremium').value);
+      var qty = parseInt($('ccQty').value, 10);
+
+      if (!$('ccOpenDate').value) { toast('Enter an open date', 'err'); return; }
+      if (!$('ccExpiry').value) { toast('Enter an expiry', 'err'); return; }
+      if (isNaN(strike) || isNaN(premium) || isNaN(qty)) { toast('Strike, premium and quantity must be numbers', 'err'); return; }
+
+      var trade = {
+        originCspId: sel.value,
+        ticker: (opt.dataset && opt.dataset.ticker) || '',
+        openDate: $('ccOpenDate').value,
+        expiry: $('ccExpiry').value,
+        strike: strike,
+        premium: premium,
+        qty: qty,
+        notes: $('ccNotes').value
+      };
+
+      var btn = $('btnCc');
+      btn.disabled = true; btn.textContent = 'Adding\u2026';
+      google.script.run
+        .withSuccessHandler(function (newId) {
+          btn.disabled = false; btn.textContent = 'Add Covered Call';
+          toast('Covered Call added: ' + newId, 'ok');
+          clearCc();
+          loadCSPs(); // the leg now has an open call, so it drops off the list
+        })
+        .withFailureHandler(function (err) {
+          btn.disabled = false; btn.textContent = 'Add Covered Call';
+          toast('Failed: ' + err.message, 'err');
+        })
+        .addCC(trade);
+    }
+
+    function clearCc() {
+      $('ccStrike').value = '';
+      $('ccPremium').value = '';
+      $('ccQty').value = '';
+      $('ccNotes').value = '';
+      $('ccOpenDate').value = todayStr();
+      $('ccOriginCsp').selectedIndex = 0;
+      syncCcTicker();
+    }
+
+    /* ---------- Dividend ---------- */
+    function submitDiv() {
+      var ticker = $('divTicker').value.trim().toUpperCase();
+      var amount = parseFloat($('divAmount').value);
+      if (!ticker) { toast('Enter a ticker', 'err'); return; }
+      if (!$('divDate').value) { toast('Enter a date', 'err'); return; }
+      if (isNaN(amount)) { toast('Enter the amount received', 'err'); return; }
+
+      var perShareRaw = $('divPerShare').value;
+      var div = {
+        ticker: ticker,
+        date: $('divDate').value,
+        amount: amount,
+        perShare: perShareRaw === '' ? '' : parseFloat(perShareRaw)
+      };
+
+      var btn = $('btnDiv');
+      btn.disabled = true; btn.textContent = 'Adding\u2026';
+      google.script.run
+        .withSuccessHandler(function (t) {
+          btn.disabled = false; btn.textContent = 'Add Dividend';
+          toast('Dividend added: ' + t, 'ok');
+          clearDiv();
+        })
+        .withFailureHandler(function (err) {
+          btn.disabled = false; btn.textContent = 'Add Dividend';
+          toast('Failed: ' + err.message, 'err');
+        })
+        .addDividend(div);
+    }
+
+    function clearDiv() {
+      $('divTicker').value = '';
+      $('divAmount').value = '';
+      $('divPerShare').value = '';
+      $('divDate').value = todayStr();
+    }
+
+    /* ---------- view switching ---------- */
+    var dashLoaded = false;
+
+    function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+    function showView(which) {
+      ['trade', 'manage', 'dashboard'].forEach(function (v) {
+        $('view' + cap(v)).classList.toggle('hidden', v !== which);
+      });
+      $('navTrade').classList.toggle('active', which === 'trade');
+      $('navManage').classList.toggle('active', which === 'manage');
+      $('navDash').classList.toggle('active', which === 'dashboard');
+      if (which === 'dashboard' && !dashLoaded) loadDashboard();
+      if (which === 'manage') loadPositions();
+    }
+
+    /* ---------- manage positions ---------- */
+    var manageKind = 'CSP';
+    var STATUSES = ['OPEN', 'CLOSED', 'EXPIRED', 'ASSIGNED'];
+
+    function showManage(kind) {
+      manageKind = kind;
+      $('mTabPut').classList.toggle('active', kind === 'CSP');
+      $('mTabCall').classList.toggle('active', kind === 'CC');
+      loadPositions();
+    }
+
+    function loadPositions() {
+      $('manageBody').innerHTML = '<div class="card empty">Loading\u2026</div>';
+      var showAll = $('mShowAll') ? $('mShowAll').checked : false;
+      google.script.run
+        .withSuccessHandler(renderPositions)
+        .withFailureHandler(function (err) {
+          $('manageBody').innerHTML = '<div class="card empty">Failed: ' + err.message + '</div>';
+        })
+        .getOpenPositions(manageKind, showAll);
+    }
+
+    function renderPositions(items) {
+      var kind = manageKind;
+      if (!items || !items.length) {
+        var showAll = $('mShowAll') && $('mShowAll').checked;
+        $('manageBody').innerHTML = '<div class="card empty">No ' +
+          (showAll ? (kind === 'CC' ? 'calls' : 'puts')
+                   : (kind === 'CC' ? 'open calls' : 'open puts')) +
+          ' to show.</div>';
+        return;
+      }
+      var h = '';
+      items.forEach(function (it, i) {
+        var opts = STATUSES.map(function (s) {
+          return '<option value="' + s + '"' + (s === it.status ? ' selected' : '') + '>' + s + '</option>';
+        }).join('');
+        h += '<div class="card"' + (it.active ? '' : ' style="opacity:.62"') + '>';
+        h += '<div class="pos-line">' + it.ticker + '&nbsp;&nbsp;&middot;&nbsp;&nbsp;$' + it.strike + '&nbsp;&nbsp;&middot;&nbsp;&nbsp;' + (it.expiry || '\u2014') + '</div>';
+        h += '<div class="field" style="margin-top:10px"><label>Status</label>' +
+             '<select id="st_' + kind + '_' + i + '" onchange="onStatusChange(\'' + kind + '\',' + i + ')">' + opts + '</select></div>';
+        if (kind === 'CC') {
+          h += '<div id="cpw_' + kind + '_' + i + '" class="field hidden"><label>Close price / share</label>' +
+               '<input id="cp_' + kind + '_' + i + '" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>';
+        }
+        h += '<button id="upd_' + kind + '_' + i + '" class="btn-update" onclick="updateStatus(\'' + kind + '\',' + i + ',\'' + it.id + '\')">Update</button>';
+        h += '</div>';
+      });
+      $('manageBody').innerHTML = h;
+    }
+
+    function onStatusChange(kind, i) {
+      if (kind !== 'CC') return;
+      var sel = $('st_' + kind + '_' + i), wrap = $('cpw_' + kind + '_' + i);
+      if (wrap) wrap.classList.toggle('hidden', sel.value !== 'CLOSED');
+    }
+
+    function updateStatus(kind, i, id) {
+      var status = $('st_' + kind + '_' + i).value;
+      var btn = $('upd_' + kind + '_' + i);
+      function reset() { btn.disabled = false; btn.textContent = 'Update'; }
+      function ok() {
+        reset();
+        toast(id + ' \u2192 ' + status, 'ok');
+        // In the default OPEN-only view, a contract that is no longer OPEN just
+        // leaves the list: remove its card instead of reloading every position.
+        var showAll = $('mShowAll') && $('mShowAll').checked;
+        var card = btn.closest ? btn.closest('.card') : null;
+        if (!showAll && status !== 'OPEN' && card && card.parentNode) {
+          var body = card.parentNode;
+          body.removeChild(card);
+          if (!body.querySelector('.card')) renderPositions([]);
+        } else {
+          loadPositions();
+        }
+      }
+      function fail(err) { reset(); toast('Failed: ' + err.message, 'err'); }
+
+      btn.disabled = true; btn.textContent = 'Saving\u2026';
+      if (kind === 'CC') {
+        var cp = null;
+        if (status === 'CLOSED') {
+          cp = parseFloat($('cp_' + kind + '_' + i).value);
+          if (isNaN(cp)) { reset(); toast('Enter a close price', 'err'); return; }
+        }
+        google.script.run.withSuccessHandler(ok).withFailureHandler(fail).setCCStatus(id, status, cp);
+      } else {
+        google.script.run.withSuccessHandler(ok).withFailureHandler(fail).setCSPStatus(id, status);
+      }
+    }
+
+    /* ---------- dashboard formatting ---------- */
+    function money(n) {
+      if (n === null || n === undefined || isNaN(n)) return '\u2014';
+      var neg = n < 0, s = '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return neg ? '-' + s : s;
+    }
+    function pct(n) {
+      if (n === null || n === undefined || isNaN(n)) return '\u2014';
+      return (n * 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+    }
+    function num(n, d) { return (n || 0).toLocaleString('en-US', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+    function cls(n) { return n > 0 ? 'pos' : (n < 0 ? 'neg' : ''); }
+    function row(k, v, vClass) { return '<div class="kpi"><span class="k">' + k + '</span><span class="v ' + (vClass || '') + '">' + v + '</span></div>'; }
+    // Tappable KPI row that opens a drill-down.
+    function rowD(k, v, vClass, scope, key) {
+      return '<div class="kpi tappable" onclick="openDrill(\'' + scope + '\',\'' + (key || '') + '\')">' +
+        '<span class="k">' + k + '<span class="chev">\u203a</span></span>' +
+        '<span class="v ' + (vClass || '') + '">' + v + '</span></div>';
+    }
+
+    // Compact cell for the derived-percentages grid (no drill; derived values).
+    /* ---------- dashboard building blocks ---------- */
+    var dashData = null;      // last dashboard payload; All stats reads it
+    var trendMode = 'm';      // premium trend view: w / m / y
+    var MONABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    function esc(s) {
+      return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    // A value safe to drop into a single-quoted onclick argument.
+    function arg(s) { return esc(String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'")); }
+    // Whole dollars, compact above $10k: $5,220 / $27.6k.
+    function money0(n) {
+      if (n === null || n === undefined || isNaN(n)) return '\u2014';
+      var a = Math.abs(n);
+      var s = a >= 10000 ? '$' + (a / 1000).toFixed(1) + 'k' : '$' + Math.round(a).toLocaleString('en-US');
+      return n < 0 ? '\u2212' + s : s;
+    }
+    function signed0(n) { return (n > 0 ? '+' : '') + money0(n); }
+    function pct1(n) { return (n === null || n === undefined || isNaN(n)) ? '\u2014' : (n * 100).toFixed(1) + '%'; }
+    function signedPct(n) { return (n === null || n === undefined || isNaN(n)) ? '\u2014' : (n >= 0 ? '+' : '\u2212') + Math.abs(Math.round(n * 100)) + '%'; }
+    function periodKey(d) {
+      if (!d.filterYear) return '';
+      return d.filterMonth ? d.filterYear + '-' + ('0' + d.filterMonth).slice(-2) : String(d.filterYear);
+    }
+    function periodLabel(d) {
+      if (!d.filterYear) return 'all time';
+      return d.filterMonth ? MONABBR[d.filterMonth - 1] + ' ' + d.filterYear : String(d.filterYear);
+    }
+
+    // Metric tile: label, value, up to two sub-lines [[text, class], ...].
+    function tile(label, value, vClass, subs, onclick) {
+      var h = '<div class="tile' + (onclick ? ' tappable' : '') + '"' + (onclick ? ' onclick="' + onclick + '"' : '') + '>' +
+        '<span class="tl">' + label + (onclick ? '<span class="chev">\u203a</span>' : '') + '</span>' +
+        '<span class="tv ' + (vClass || '') + '">' + value + '</span>';
+      (subs || []).forEach(function (s) { if (s && s[0]) h += '<span class="ts ' + (s[1] || '') + '">' + s[0] + '</span>'; });
+      return h + '</div>';
+    }
+
+    /* 1. Contracts expiring within 7 days */
+    function expiringCard(list) {
+      var h = '<div class="card"><p class="sectitle">Needs attention this week</p>';
+      if (!list || !list.length) return h + '<div class="empty">Nothing expires in the next 7 days.</div></div>';
+      list.forEach(function (e) {
+        var badge;
+        if (e.state === 'past') badge = ['b-warn', 'Past expiry \u00b7 update'];
+        else if (e.state === 'itm') badge = ['b-bad', e.kind === 'put' ? 'Likely assigned' : 'Likely called away'];
+        else if (e.state === 'near') badge = ['b-warn', 'Within 2%'];
+        else if (e.state === 'otm') badge = ['b-good', 'Expires worthless'];
+        else badge = ['b-neutral', 'No live price'];
+        var dt = new Date(e.expiry + 'T00:00:00');
+        var when = e.days < 0 ? 'expired ' + (-e.days) + (e.days === -1 ? ' day ago' : ' days ago')
+          : (e.days === 0 ? 'today' : e.days + (e.days === 1 ? ' day' : ' days'));
+        var tab = e.kind === 'put' ? 'CSP' : 'CC';
+        h += '<div class="exp tappable" onclick="goManage(\'' + tab + '\')">' +
+          '<div><span class="et">' + esc(e.ticker) + ' ' + e.kind + ' $' + e.strike + '</span>' +
+          '<span class="es">' + MONABBR[dt.getMonth()] + ' ' + dt.getDate() + ' \u00b7 ' + when +
+          (e.live ? ' \u00b7 live $' + e.live.toFixed(2) : '') + '</span></div>' +
+          '<span class="bdg ' + badge[0] + '">' + badge[1] + '</span></div>';
+      });
+      return h + '</div>';
+    }
+    function goManage(kind) { showView('manage'); showManage(kind); }
+
+    /* 2. Key figures */
+    function kpiGrid(d) {
+      var x = d.extras, inc = x.income, cd = x.capitalDeployed, pk = periodKey(d);
+      var subs = [[money0(inc.options) + ' options \u00b7 ' + money0(inc.dividends) + ' div', '']];
+      if (x.prior) {
+        subs.push(x.prior.pct === null
+          ? ['No ' + x.prior.year + ' data to compare', '']
+          : [signedPct(x.prior.pct) + ' vs ' + x.prior.year + ' same period', x.prior.pct >= 0 ? 'pos' : 'neg']);
+      }
+      var h = '<div class="tiles">';
+      h += tile(d.filterYear ? 'Income ' + periodLabel(d) : 'Income, all time', money0(inc.total), cls(inc.total),
+                subs, "openDrill('income','" + pk + "')");
+      h += cd.pct === null
+        ? tile('Capital deployed', money0(cd.deployed), '', [['Set your capital in All stats', '']], "openDrill('deployed','')")
+        : tile('Capital deployed', Math.round(cd.pct * 100) + '%', '', [[money0(cd.free) + ' free', '']], "openDrill('deployed','')");
+      var yInc = x.yieldInclUnrealized;
+      h += tile('Yield, annualized', pct1(x.yieldAnnual), '', [
+        ['on deployed capital', ''],
+        x.yieldAnnual === null ? null
+          : (yInc === null || yInc === undefined ? ['incl. unrealized: current periods only', '']
+                                                  : [pct1(yInc) + ' incl. unrealized', cls(yInc)])
+      ], null);
+      h += tile('Open P&amp;L', signed0(d.totalUnrealized), cls(d.totalUnrealized), [['unrealized, live', '']],
+                "openDrill('unrealized','')");
+      return h + '</div>';
+    }
+
+    /* 3. Holdings: average cost vs live */
+    function holdingsCard(items) {
+      var h = '<div class="card"><div class="cardhead"><p class="sectitle">Holdings \u00b7 avg cost vs live</p>' +
+        '<span class="hint">always live</span></div>';
+      if (!items || !items.length) return h + '<div class="empty">No shares held right now.</div></div>';
+      var tVal = 0, tPnL = 0, anyLive = false;
+      items.forEach(function (a) {
+        var rc = a.hasLive ? (a.win ? 'win' : 'lose') : '';
+        var be = a.breakEvenPct === null || a.breakEvenPct === undefined
+          ? (a.avgCost <= 0 ? 'Cost fully covered by income' : '')
+          : (a.breakEvenPct >= 0 ? '+' : '\u2212') + Math.abs(a.breakEvenPct * 100).toFixed(1) + '% ' +
+            (a.breakEvenPct >= 0 ? 'above' : 'below') + ' cost';
+        h += '<div class="hold tappable ' + rc + '" onclick="openTicker(\'' + arg(a.ticker) + '\')">' +
+          '<div class="hrow"><span class="ht">' + esc(a.ticker) + ' <span class="hs">' + num(a.shares) + ' sh</span></span>' +
+          '<span class="hv">' + (a.hasLive ? signed0(a.netPnL) : '\u2014') + '</span></div>' +
+          '<span class="hl">Avg ' + money(a.avgCost) + (a.hasLive ? ' \u00b7 live ' + money(a.livePrice) +
+            ' \u00b7 value ' + money0(a.liveCost) : ' \u00b7 no live price') + '</span>' +
+          '<span class="hl">' + [be, a.minCall === null || a.minCall === undefined ? '' : 'min call ' + money(a.minCall)]
+            .filter(Boolean).join(' \u00b7 ') + '</span></div>';
+        if (a.hasLive) { anyLive = true; tVal += a.liveCost; tPnL += a.netPnL; }
+      });
+      h += '<div class="htotal"><span>Total \u00b7 value ' + (anyLive ? money0(tVal) : '\u2014') + '</span>' +
+        '<span class="' + cls(tPnL) + '">' + (anyLive ? signed0(tPnL) : '\u2014') + '</span></div>';
+      return h + '</div>';
+    }
+
+    /* 4. Income by ticker: options and dividends in one stacked bar */
+    function incomeByTickerCard(items, d) {
+      var h = '<div class="card"><div class="cardhead"><p class="sectitle">Income by ticker</p>' +
+        '<span class="hint"><i class="sw sw-opt"></i>Options <i class="sw sw-div"></i>Dividends</span></div>';
+      if (!items || !items.length) return h + '<div class="empty">No income in ' + periodLabel(d) + '.</div></div>';
+      var max = 0;
+      items.forEach(function (b) { max = Math.max(max, Math.max(b.options, 0) + Math.max(b.dividends, 0), Math.abs(b.total)); });
+      items.forEach(function (b) {
+        var opt = Math.max(b.options, 0), dv = Math.max(b.dividends, 0), pos = opt + dv;
+        var w = max > 0 ? Math.max(2, Math.round((pos > 0 ? pos : Math.abs(b.total)) / max * 100)) : 0;
+        var bar = pos > 0
+          ? '<div class="sbar" style="width:' + w + '%"><div class="s-opt" style="width:' + (opt / pos * 100) + '%"></div>' +
+            '<div class="s-div" style="width:' + (dv / pos * 100) + '%"></div></div>'
+          : '<div class="sbar" style="width:' + w + '%"><div class="s-neg" style="width:100%"></div></div>';
+        h += '<div class="ibt tappable" onclick="openTicker(\'' + arg(b.ticker) + '\')">' +
+          '<div class="hrow"><span class="ht">' + esc(b.ticker) + '</span>' +
+          '<span class="iv"><span class="' + cls(b.options) + '">' + money0(b.options) + '</span>' +
+          ' <span class="muted">\u00b7 ' + money0(b.dividends) + ' div</span></span></div>' + bar + '</div>';
+      });
+      return h + '</div>';
+    }
+
+    /* 5. Premium trend: weekly / monthly / yearly bars with an average line */
+    function trendCard(t) {
+      return '<div class="card" id="trendCard">' + trendInner(t) + '</div>';
+    }
+    function setTrend(m) { trendMode = m; if (dashData && dashData.extras) $('trendCard').innerHTML = trendInner(dashData.extras.trend); }
+    function trendInner(t) {
+      var series = trendMode === 'w' ? t.weekly : (trendMode === 'y' ? t.yearly : t.monthly);
+      var hi = trendMode === 'w' ? t.weeklyHi : (trendMode === 'y' ? t.yearlyHi : t.monthlyHi);
+      var scope = trendMode === 'w' ? 'week' : (trendMode === 'y' ? 'year' : 'month');
+      var unit = trendMode === 'w' ? 'week' : (trendMode === 'y' ? 'year' : 'month');
+      var h = '<div class="cardhead"><p class="sectitle">Premium trend</p><div class="seg2">' +
+        ['w', 'm', 'y'].map(function (m) {
+          return '<button class="' + (m === trendMode ? 'on' : '') + '" onclick="setTrend(\'' + m + '\')">' +
+            (m === 'w' ? 'Weekly' : (m === 'm' ? 'Monthly' : 'Yearly')) + '</button>';
+        }).join('') + '</div></div>';
+      if (!series || !series.length) return h + '<div class="empty">No premium in this period.</div>';
+      // Average over bars from the first one with activity, so the months
+      // before you started trading don't drag it down.
+      var first = 0; while (first < series.length && !series[first].premium) first++;
+      var active = series.slice(first), avg = 0;
+      active.forEach(function (p) { avg += p.premium; });
+      avg = active.length ? avg / active.length : 0;
+      var max = 0; series.forEach(function (p) { max = Math.max(max, p.premium); });
+      max = Math.max(max, avg) * 1.1 || 1;
+      var cur = series[hi] || series[series.length - 1];
+      var diff = avg > 0 ? cur.premium / avg - 1 : null;
+      h += '<p class="tsub">' + esc(cur.label) + ' ' + money0(cur.premium) +
+        (diff === null ? '' : ' \u00b7 ' + signedPct(diff) + ' vs ' + money0(avg) + ' avg per ' + unit) + '</p>';
+      h += '<div class="tchart"><div class="avgline" style="bottom:' + (avg / max * 100).toFixed(1) + '%"></div><div class="tbars">';
+      series.forEach(function (p, i) {
+        h += '<div class="tbar' + (i === hi ? ' on' : '') + '" style="height:' + Math.max(p.premium / max * 100, p.premium ? 2 : 0).toFixed(1) +
+          '%" onclick="openDrill(\'' + scope + '\',\'' + arg(p.key) + '\')" title="' + esc(p.label) + ' ' + money0(p.premium) + '"></div>';
+      });
+      h += '</div></div><div class="tlabels">';
+      series.forEach(function (p) { h += '<span>' + esc(p.label) + '</span>'; });
+      return h + '</div><p class="hint" style="margin:8px 0 0">Tap a bar to see that ' + unit + '\u2019s trades</p>';
+    }
+
+    /* 6. Strategy stats */
+    function statsCard(s, d) {
+      var pk = periodKey(d);
+      var h = '<div class="tiles">';
+      h += tile('Puts assigned', pct1(s.putsAssignedPct), '',
+        [[s.putsResolved ? s.putsAssigned + ' of ' + s.putsResolved + ' closed puts' : 'No closed puts', '']],
+        s.putsResolved ? "openDrill('puts_stats','" + pk + "')" : null);
+      h += tile('Calls called away', pct1(s.callsAssignedPct), '',
+        [[s.callsResolved ? s.callsAssigned + ' of ' + s.callsResolved + ' closed calls' : 'No closed calls', '']],
+        s.callsResolved ? "openDrill('calls_stats','" + pk + "')" : null);
+      h += tile('Best \u00b7 weakest', s.best ? esc(s.best.ticker) + ' ' + Math.round(s.best.ret * 100) + '%' : '\u2014', '',
+        [[s.worst ? esc(s.worst.ticker) + ' ' + Math.round(s.worst.ret * 100) + '% \u00b7 annualized' : 'Needs 2+ weeks of data', '']],
+        s.best ? "openTicker('" + arg(s.best.ticker) + "')" : null);
+      h += tile('Largest position', s.largest ? esc(s.largest.ticker) + ' ' + Math.round((s.largest.pct || 0) * 100) + '%' : '\u2014', '',
+        [['of deployed capital', '']], s.largest ? "openTicker('" + arg(s.largest.ticker) + "')" : null);
+      return h + '</div>';
+    }
+
+    /* 7. All stats sheet (built from the loaded dashboard, no extra request) */
+    function openAllStats() {
+      var d = dashData; if (!d) return;
+      $('drill').classList.remove('hidden');
+      $('drillTitle').textContent = 'All stats \u00b7 ' + periodLabel(d);
+      $('drillTotal').textContent = 'Unrealized and the wheel figures cover your whole history; everything else follows the filter.';
+      var r = function (k, v, c) { return '<div class="tx"><div class="l"><span class="t">' + k + '</span></div><span class="a ' + (c || '') + '">' + v + '</span></div>'; };
+      var h = '';
+      h += r('Total realized', money(d.totalRealized), cls(d.totalRealized));
+      h += r('Dividends', money(d.totalDividends), cls(d.totalDividends));
+      h += r('Unrealized', money(d.totalUnrealized), cls(d.totalUnrealized));
+      h += r('Total P&amp;L', money(d.totalPnL), cls(d.totalPnL));
+      h += r('Return on capital', pct1(d.pctRealized), cls(d.pctRealized));
+      h += r('Return incl. dividends and unrealized', pct1(d.pctInclDividends), cls(d.pctInclDividends));
+      var xx = d.extras || {};
+      h += r('Yield, annualized', pct1(xx.yieldAnnual), cls(xx.yieldAnnual));
+      h += r('Yield incl. unrealized', pct1(xx.yieldInclUnrealized), cls(xx.yieldInclUnrealized));
+      h += '<p class="hint" style="margin:6px 0 4px">Both yields divide by capital actually deployed, counted by the day. ' +
+        'The second also adds today\u2019s unrealized gains and losses on those positions' +
+        (xx.unrealizedInYield === null || xx.unrealizedInYield === undefined
+          ? ', so it\u2019s only shown for periods that run to today.'
+          : ' (' + money(xx.unrealizedInYield) + ').') + '</p>';
+      h += r('Monthly run rate', money(d.monthlyRunRate), cls(d.monthlyRunRate));
+      h += r('Premium collected', money(d.totalPremium), '');
+      h += r('Wheels completed \u00b7 active', num(d.wheelsCompleted) + ' \u00b7 ' + num(d.wheelsActive), '');
+      h += r('Avg wheel duration', d.wheelsCompleted ? num(d.avgDuration, 1) + ' days' : '\u2014', '');
+      h += '<div class="capedit"><label for="capInput">Initial capital</label><div class="caprow">' +
+        '<input id="capInput" type="number" inputmode="decimal" step="100" value="' + (d.capital || '') + '" placeholder="100000">' +
+        '<button id="capSave" class="btn-update" onclick="saveCapital()">Save</button></div>' +
+        '<div class="hint">Used for capital deployed and every return figure.</div></div>';
+      $('drillBody').innerHTML = h;
+    }
+    function saveCapital() {
+      var v = parseFloat($('capInput').value);
+      if (isNaN(v) || v < 0) { toast('Enter a valid amount', 'err'); return; }
+      var btn = $('capSave'); btn.disabled = true; btn.textContent = 'Saving\u2026';
+      google.script.run
+        .withSuccessHandler(function () { closeDrill(); toast('Initial capital saved', 'ok'); loadDashboard(); })
+        .withFailureHandler(function (err) { btn.disabled = false; btn.textContent = 'Save'; toast('Failed: ' + err.message, 'err'); })
+        .setInitialCapital(v);
+    }
+
+    /* 8. Ticker detail sheet */
+    function openTicker(t) {
+      $('drill').classList.remove('hidden');
+      $('drillTitle').textContent = t;
+      $('drillTotal').textContent = '';
+      $('drillBody').innerHTML = '<div class="empty">Loading\u2026</div>';
+      google.script.run
+        .withSuccessHandler(renderTicker)
+        .withFailureHandler(function (err) { $('drillBody').innerHTML = '<div class="empty">Failed: ' + esc(err.message) + '</div>'; })
+        .getTickerDetail(t);
+    }
+    function renderTicker(td) {
+      $('drillTitle').textContent = td.ticker + ' \u00b7 ticker detail';
+      $('drillTotal').innerHTML = 'Options ' + money(td.optionsIncome) + ' \u00b7 dividends ' + money(td.dividendIncome);
+      var h = '<div class="tiles" style="margin-top:12px">';
+      h += tile('Lifetime income', money0(td.lifetimeIncome), cls(td.lifetimeIncome), [], null);
+      h += tile('Dividend yield on cost', pct1(td.yieldOnCost), '', [[td.yieldOnCost === null ? 'needs a holding and dividends' : 'last 12 months', '']], null);
+      h += '</div>';
+      var a = td.holding;
+      if (a) {
+        h += '<div class="hold ' + (a.hasLive ? (a.win ? 'win' : 'lose') : '') + '" style="margin-top:10px">' +
+          '<div class="hrow"><span class="ht">' + num(a.shares) + ' shares held</span><span class="hv">' +
+          (a.hasLive ? signed0(a.netPnL) : '\u2014') + '</span></div>' +
+          '<span class="hl">Avg ' + money(a.avgCost) + (a.hasLive ? ' \u00b7 live ' + money(a.livePrice) : '') +
+          (a.minCall === null || a.minCall === undefined ? '' : ' \u00b7 min call ' + money(a.minCall)) + '</span></div>';
+      } else {
+        h += '<p class="hint" style="margin:10px 0 0">Not holding shares right now.</p>';
+      }
+      var cs = td.costSeries || [];
+      if (cs.length >= 2) {
+        // Scale across the actual range (not from zero) so the decline is visible.
+        var lo = Infinity, hi = -Infinity;
+        cs.forEach(function (p) { lo = Math.min(lo, p.cost); hi = Math.max(hi, p.cost); });
+        var span = hi - lo;
+        h += '<p class="sectitle" style="margin:16px 0 8px">Effective cost per share over time</p><div class="cbars">';
+        cs.forEach(function (p, i) {
+          var pctH = span > 0 ? 25 + (p.cost - lo) / span * 75 : 60;
+          h += '<div class="cbar' + (i === cs.length - 1 ? ' on' : '') + '" style="height:' + Math.round(pctH) +
+            '%" title="' + p.date + ' ' + money(p.cost) + '"></div>';
+        });
+        h += '</div><div class="crange"><span>' + money(cs[0].cost) + ' \u00b7 ' + cs[0].date + '</span><span>' +
+          money(cs[cs.length - 1].cost) + ' now</span></div>';
+      }
+      h += '<p class="sectitle" style="margin:16px 0 4px">History</p>';
+      if (!td.history || !td.history.length) h += '<div class="empty">No trades yet.</div>';
+      (td.history || []).forEach(function (r) {
+        h += '<div class="tx"><div class="l"><span class="t">' + esc(r.label) + '</span><span class="s">' + esc(r.date) + '</span></div>' +
+          '<span class="a ' + cls(r.amount) + '">' + money(r.amount) + '</span></div>';
+      });
+      $('drillBody').innerHTML = h;
+    }
+
+    /* ---------- drill-down ---------- */
+    function currentFilter() {
+      var y = $('fltYear') ? $('fltYear').value : '';
+      var m = $('fltMonth') ? $('fltMonth').value : '';
+      return { year: y, month: y ? m : '' };
+    }
+    function onYearChange() {
+      var y = $('fltYear').value;
+      var m = $('fltMonth');
+      m.disabled = !y;
+      if (!y) m.value = '';
+      syncChips();
+      loadDashboard();
+    }
+    function onMonthChange() {
+      syncChips();
+      loadDashboard();
+    }
+    // Quick filters: All / year-to-date / current month. Chips and dropdowns stay in sync.
+    function applyQuickFilter(kind) {
+      var y = $('fltYear'), m = $('fltMonth');
+      var now = new Date();
+      if (kind === 'all') {
+        y.value = ''; m.value = ''; m.disabled = true;
+      } else {
+        var yr = String(now.getFullYear());
+        var has = false;
+        for (var i = 0; i < y.options.length; i++) if (y.options[i].value === yr) has = true;
+        if (!has && y.options.length > 1) yr = y.options[1].value; // newest year with data
+        y.value = yr;
+        m.disabled = false;
+        m.value = (kind === 'month') ? String(now.getMonth() + 1) : '';
+      }
+      syncChips();
+      loadDashboard();
+    }
+    function syncChips() {
+      var y = $('fltYear').value, m = $('fltMonth').value;
+      var now = new Date();
+      var curY = String(now.getFullYear()), curM = String(now.getMonth() + 1);
+      $('chipAll').classList.toggle('on', !y);
+      $('chipYtd').classList.toggle('on', y === curY && !m);
+      $('chipMonth').classList.toggle('on', y === curY && m === curM);
+    }
+    function populateYears(years) {
+      var sel = $('fltYear');
+      if (!sel || sel.dataset.filled || !years) return;
+      years.forEach(function (y) {
+        var o = document.createElement('option');
+        o.value = y; o.textContent = y;
+        sel.appendChild(o);
+      });
+      sel.dataset.filled = '1';
+    }
+    function openDrill(scope, key) {
+      $('drill').classList.remove('hidden');
+      $('drillTitle').textContent = 'Loading\u2026';
+      $('drillTotal').textContent = '';
+      $('drillBody').innerHTML = '<div class="empty">Loading\u2026</div>';
+      google.script.run
+        .withSuccessHandler(renderDrill)
+        .withFailureHandler(function (err) {
+          $('drillBody').innerHTML = '<div class="empty">Failed: ' + err.message + '</div>';
+        })
+        .getDrilldown(scope, key || '');
+    }
+    function renderDrill(d) {
+      $('drillTitle').textContent = d.title;
+      $('drillTotal').innerHTML = d.count + ' item' + (d.count === 1 ? '' : 's') + ' \u00b7 ' +
+        (d.isRate ? '<b>' + pct1(d.total) + '</b> assigned or called away'
+                  : 'Total <b class="' + cls(d.total) + '">' + money(d.total) + '</b>');
+      if (!d.rows || !d.rows.length) { $('drillBody').innerHTML = '<div class="empty">No transactions.</div>'; return; }
+      var h = '';
+      d.rows.forEach(function (r) {
+        var amt = r.sign ? money(r.amount) : esc(r.amount);
+        h += '<div class="tx"><div class="l"><span class="t">' + esc(r.ticker || '') + '</span>' +
+          '<span class="s">' + esc(r.kind || '') + (r.date ? (' \u00b7 ' + r.date) : '') + '</span></div>' +
+          '<span class="a ' + (r.sign ? cls(r.amount) : '') + '">' + amt + '</span></div>';
+      });
+      $('drillBody').innerHTML = h;
+    }
+    function closeDrill() { $('drill').classList.add('hidden'); }
+
+    function loadDashboard() {
+      $('dashBody').innerHTML = '<div class="card empty">Loading\u2026</div>';
+      $('dashAsOf').textContent = '';
+      google.script.run
+        .withSuccessHandler(renderDashboard)
+        .withFailureHandler(function (err) {
+          $('dashBody').innerHTML = '<div class="card empty">Failed: ' + err.message + '</div>';
+        })
+        .getDashboardData(currentFilter());
+    }
+
+    function renderDashboard(d) {
+      dashLoaded = true;
+      dashData = d;
+      populateYears(d.years);
+      var filtered = (d.filterYear !== null && d.filterYear !== undefined && d.filterYear !== '');
+      $('fltNote').classList.toggle('hidden', !filtered);
+      if (!d.extras) {
+        $('dashBody').innerHTML = '<div class="card empty">Update the Apps Script deployment to a new version to see this dashboard.</div>';
+        return;
+      }
+      var h = '';
+      h += expiringCard(d.extras.expiring);
+      h += kpiGrid(d);
+      h += holdingsCard(d.avgCost);
+      h += incomeByTickerCard(d.extras.incomeByTicker, d);
+      h += trendCard(d.extras.trend);
+      h += statsCard(d.extras.stats, d);
+      h += '<div class="card linkrow tappable" onclick="openAllStats()"><span>All stats</span><span class="chev">\u203a</span></div>';
+      $('dashBody').innerHTML = h;
+      var fl = filtered ? ' \u00b7 ' + periodLabel(d) : '';
+      $('dashAsOf').textContent = 'As of ' + new Date(d.asOf).toLocaleString() + fl;
+    }
+
+    /* ---------- init ---------- */
+    setDefaults();
+    // Load data once the app is connected (immediately if it already is).
+    Api.onReady(function () {
+      // One batched request loads the trade list, both Manage lists and the
+      // dashboard; the calls below share it instead of making their own.
+      Api.prefetch(currentFilter());
+      loadCSPs();
+      if (dashLoaded) loadDashboard();
+    });
+  </script>
+</body>
+</html>
